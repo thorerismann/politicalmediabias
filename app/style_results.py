@@ -1,3 +1,5 @@
+"""Streamlit helpers for rendering bias analysis results."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -6,6 +8,14 @@ import streamlit as st
 
 
 def _bias_color(bias: str) -> str:
+    """Select a display color for a bias classification.
+
+    Args:
+        bias: Bias label returned by the model.
+
+    Returns:
+        A hex color string for UI styling.
+    """
     normalized = bias.strip().lower()
     if normalized == "left":
         return "#d1495b"
@@ -15,6 +25,11 @@ def _bias_color(bias: str) -> str:
 
 
 def render_bias_result(result: dict[str, Any]) -> None:
+    """Render the bias result card in Streamlit.
+
+    Args:
+        result: Parsed model response including bias, confidence, and rationale.
+    """
     bias = str(result.get("bias", "neutral"))
     confidence = result.get("confidence", "N/A")
     rationale = result.get("rationale", "No rationale provided.")

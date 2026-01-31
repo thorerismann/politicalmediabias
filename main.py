@@ -1,3 +1,5 @@
+"""Streamlit entry point for the Political Media Bias Analyzer app."""
+
 import os
 import textwrap
 
