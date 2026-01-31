@@ -3,7 +3,7 @@ import textwrap
 
 import streamlit as st
 
-from app.bias_detector import analyze_with_mistral, prepare_bias_prompt
+from app.bias_detector import analyze_with_mistral, prepare_bias_input, prepare_bias_prompt
 from app.style_results import render_bias_result
 
 st.set_page_config(page_title="Political Media Bias Analyzer", page_icon="📰", layout="centered")
@@ -31,7 +31,18 @@ with tab_entry:
         else:
             with st.spinner("Analyzing bias with Mistral..."):
                 try:
-                    result = analyze_with_mistral(user_input, max_words=max_words)
+                    prompt, metadata = prepare_bias_input(user_input, max_words=max_words)
+                    if metadata.get("extracted"):
+                        if metadata.get("source") == "url":
+                            st.write("Extracted main article text from the provided URL.")
+                        else:
+                            st.write("Extracted main article text from the provided HTML.")
+                    st.write(f"Words cut to meet the limit: {metadata.get('words_cut', 0)}")
+                    result = analyze_with_mistral(
+                        user_input,
+                        max_words=max_words,
+                        prepared_prompt=prompt,
+                    )
                     st.write(result)
                 except ValueError as exc:
                     st.error(str(exc))
