@@ -1,46 +1,49 @@
 from __future__ import annotations
 
-import subprocess
 import json
 import logging
 import os
+import subprocess
 from typing import Any
-from urllib import request
 
-from app.html_parser import extract_main_text
+from app.html_parser import extract_text_from_input
 
 LOGGER = logging.getLogger(__name__)
 DEFAULT_MAX_WORDS = 200
 MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions"
 
-
-def _looks_like_html(text: str) -> bool:
-    return "<" in text and ">" in text
-
-
 def truncate_words(text: str, max_words: int = DEFAULT_MAX_WORDS) -> str:
     words = text.split()
     return " ".join(words[:max_words])
 
-
-def prepare_bias_prompt(raw_input: str, max_words: int = DEFAULT_MAX_WORDS) -> str:
+def prepare_bias_input(raw_input: str, max_words: int = DEFAULT_MAX_WORDS) -> tuple[str, dict]:
     LOGGER.debug("Preparing bias prompt with max_words=%s", max_words)
-    if _looks_like_html(raw_input):
-        LOGGER.info("Detected HTML input; extracting main text.")
-        cleaned_text = extract_main_text(raw_input)
-    else:
-        LOGGER.info("Detected plain text input; trimming whitespace.")
-        cleaned_text = raw_input.strip()
-
+    cleaned_text, metadata = extract_text_from_input(raw_input)
+    original_word_count = len(cleaned_text.split())
     truncated_text = truncate_words(cleaned_text, max_words=max_words)
-    LOGGER.debug("Prepared prompt with %s words.", len(truncated_text.split()))
+    truncated_word_count = len(truncated_text.split())
+    words_cut = max(0, original_word_count - truncated_word_count)
+    metadata.update(
+        {
+            "original_word_count": original_word_count,
+            "truncated_word_count": truncated_word_count,
+            "words_cut": words_cut,
+        }
+    )
+    LOGGER.info("Prepared prompt with %s words (%s cut).", truncated_word_count, words_cut)
 
-    return (
+    prompt = (
         "You are a media bias analyst. Classify the political bias of the text as "
         "left, right, or neutral. Respond ONLY with a JSON object using keys "
         '"bias", "confidence", and "rationale". The rationale should be 1-3 sentences.\n\n'
         f'Text:\n"""\n{truncated_text}\n"""'
     )
+    return prompt, metadata
+
+
+def prepare_bias_prompt(raw_input: str, max_words: int = DEFAULT_MAX_WORDS) -> str:
+    prompt, _ = prepare_bias_input(raw_input, max_words=max_words)
+    return prompt
 
 
 def _extract_json_payload(output: str) -> dict[str, Any] | None:
@@ -81,8 +84,12 @@ def _write_run_log(log_path: str, prompt: str, output: str, parsed: dict[str, An
             log_file.write("\n")
 
 
-def analyze_with_mistral(raw_input: str, max_words: int = DEFAULT_MAX_WORDS) -> dict:
-    prompt = prepare_bias_prompt(raw_input, max_words=max_words)
+def analyze_with_mistral(
+    raw_input: str,
+    max_words: int = DEFAULT_MAX_WORDS,
+    prepared_prompt: str | None = None,
+) -> dict:
+    prompt = prepared_prompt or prepare_bias_prompt(raw_input, max_words=max_words)
     log_path = os.getenv("BIAS_LOG_PATH", "mistral_run.log")
 
     try:

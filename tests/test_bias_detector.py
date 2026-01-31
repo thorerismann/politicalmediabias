@@ -1,4 +1,4 @@
-from app.bias_detector import prepare_bias_prompt, truncate_words
+from app.bias_detector import prepare_bias_input, prepare_bias_prompt, truncate_words
 
 
 def test_truncate_words_limits_to_200():
@@ -13,3 +13,10 @@ def test_prepare_bias_prompt_with_html():
     assert '"bias"' in prompt
     assert "Headline" in prompt
     assert "Some article text." in prompt
+
+
+def test_prepare_bias_input_tracks_words_cut():
+    text = "word " * 10
+    prompt, metadata = prepare_bias_input(text, max_words=5)
+    assert '"bias"' in prompt
+    assert metadata["words_cut"] == 5
