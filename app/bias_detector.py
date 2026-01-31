@@ -1,4 +1,4 @@
-"""Helpers for building prompts and running bias analysis with Mistral."""
+"""Helpers for building prompts and running bias analysis with local models."""
 
 from __future__ import annotations
 
@@ -27,7 +27,26 @@ def truncate_words(text: str, max_words: int = DEFAULT_MAX_WORDS) -> str:
     words = text.split()
     return " ".join(words[:max_words])
 
-def prepare_bias_input(raw_input: str, max_words: int = DEFAULT_MAX_WORDS) -> tuple[str, dict]:
+def _render_custom_prompt(prompt_template: str, truncated_text: str) -> str:
+    """Render a custom prompt template.
+
+    Args:
+        prompt_template: The user-provided prompt template.
+        truncated_text: The truncated article text.
+
+    Returns:
+        A prompt string ready to send to the model.
+    """
+    if "{text}" in prompt_template:
+        return prompt_template.format(text=truncated_text)
+    return f"{prompt_template.rstrip()}\n\nText:\n\"\"\"\n{truncated_text}\n\"\"\""
+
+
+def prepare_bias_input(
+    raw_input: str,
+    max_words: int = DEFAULT_MAX_WORDS,
+    prompt_template: str | None = None,
+) -> tuple[str, dict]:
     """Prepare the Mistral prompt and metadata for bias analysis.
 
     Args:
@@ -52,16 +71,23 @@ def prepare_bias_input(raw_input: str, max_words: int = DEFAULT_MAX_WORDS) -> tu
     )
     LOGGER.info("Prepared prompt with %s words (%s cut).", truncated_word_count, words_cut)
 
-    prompt = (
-        "You are a media bias analyst. Classify the political bias of the text as "
-        "left, right, or neutral. Respond ONLY with a JSON object using keys "
-        '"bias", "confidence", and "rationale". The rationale should be 1-3 sentences.\n\n'
-        f'Text:\n"""\n{truncated_text}\n"""'
-    )
+    if prompt_template:
+        prompt = _render_custom_prompt(prompt_template, truncated_text)
+    else:
+        prompt = (
+            "You are a media bias analyst. Classify the political bias of the text as "
+            "left, right, or neutral. Respond ONLY with a JSON object using keys "
+            '"bias", "confidence", and "rationale". The rationale should be 1-3 sentences.\n\n'
+            f'Text:\n"""\n{truncated_text}\n"""'
+        )
     return prompt, metadata
 
 
-def prepare_bias_prompt(raw_input: str, max_words: int = DEFAULT_MAX_WORDS) -> str:
+def prepare_bias_prompt(
+    raw_input: str,
+    max_words: int = DEFAULT_MAX_WORDS,
+    prompt_template: str | None = None,
+) -> str:
     """Generate only the prompt for bias analysis.
 
     Args:
@@ -71,7 +97,11 @@ def prepare_bias_prompt(raw_input: str, max_words: int = DEFAULT_MAX_WORDS) -> s
     Returns:
         The prompt string sent to the model.
     """
-    prompt, _ = prepare_bias_input(raw_input, max_words=max_words)
+    prompt, _ = prepare_bias_input(
+        raw_input,
+        max_words=max_words,
+        prompt_template=prompt_template,
+    )
     return prompt
 
 
@@ -129,15 +159,17 @@ def _write_run_log(log_path: str, prompt: str, output: str, parsed: dict[str, An
             log_file.write("\n")
 
 
-def analyze_with_mistral(
+def analyze_with_model(
     raw_input: str,
+    model_name: str,
     max_words: int = DEFAULT_MAX_WORDS,
     prepared_prompt: str | None = None,
 ) -> dict:
-    """Run bias analysis using the local Mistral model via Ollama.
+    """Run bias analysis using a local Ollama model.
 
     Args:
         raw_input: The raw text, HTML, or URL provided by the user.
+        model_name: The Ollama model name to run.
         max_words: Maximum number of words to include in the prompt.
         prepared_prompt: Optional pre-built prompt to reuse.
 
@@ -145,11 +177,11 @@ def analyze_with_mistral(
         The model response dictionary with bias classification details.
     """
     prompt = prepared_prompt or prepare_bias_prompt(raw_input, max_words=max_words)
-    log_path = os.getenv("BIAS_LOG_PATH", "mistral_run.log")
+    log_path = os.getenv("BIAS_LOG_PATH", f"{model_name}_run.log")
 
     try:
         result = subprocess.run(
-            ["ollama", "run", "mistral"],
+            ["ollama", "run", model_name],
             input=prompt,
             capture_output=True,
             text=True,
@@ -166,3 +198,31 @@ def analyze_with_mistral(
         return {"bias": "timeout"}
     except Exception as e:
         return {"bias": f"error: {e}"}
+
+
+def analyze_with_mistral(
+    raw_input: str,
+    max_words: int = DEFAULT_MAX_WORDS,
+    prepared_prompt: str | None = None,
+) -> dict:
+    """Run bias analysis using the local Mistral model via Ollama."""
+    return analyze_with_model(
+        raw_input,
+        model_name="mistral",
+        max_words=max_words,
+        prepared_prompt=prepared_prompt,
+    )
+
+
+def analyze_with_tinyllama(
+    raw_input: str,
+    max_words: int = DEFAULT_MAX_WORDS,
+    prepared_prompt: str | None = None,
+) -> dict:
+    """Run bias analysis using the TinyLlama model via Ollama."""
+    return analyze_with_model(
+        raw_input,
+        model_name="tinyllama",
+        max_words=max_words,
+        prepared_prompt=prepared_prompt,
+    )
