@@ -1,3 +1,5 @@
+"""Helpers for building prompts and running bias analysis with Mistral."""
+
 from __future__ import annotations
 
 import json
@@ -13,10 +15,28 @@ DEFAULT_MAX_WORDS = 200
 MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions"
 
 def truncate_words(text: str, max_words: int = DEFAULT_MAX_WORDS) -> str:
+    """Truncate text to a maximum number of words.
+
+    Args:
+        text: Source text to truncate.
+        max_words: Maximum number of words to keep.
+
+    Returns:
+        The truncated text preserving word order.
+    """
     words = text.split()
     return " ".join(words[:max_words])
 
 def prepare_bias_input(raw_input: str, max_words: int = DEFAULT_MAX_WORDS) -> tuple[str, dict]:
+    """Prepare the Mistral prompt and metadata for bias analysis.
+
+    Args:
+        raw_input: The raw text, HTML, or URL provided by the user.
+        max_words: Maximum number of words to include in the prompt.
+
+    Returns:
+        A tuple of the formatted prompt and metadata about extraction and truncation.
+    """
     LOGGER.debug("Preparing bias prompt with max_words=%s", max_words)
     cleaned_text, metadata = extract_text_from_input(raw_input)
     original_word_count = len(cleaned_text.split())
@@ -42,11 +62,28 @@ def prepare_bias_input(raw_input: str, max_words: int = DEFAULT_MAX_WORDS) -> tu
 
 
 def prepare_bias_prompt(raw_input: str, max_words: int = DEFAULT_MAX_WORDS) -> str:
+    """Generate only the prompt for bias analysis.
+
+    Args:
+        raw_input: The raw text, HTML, or URL provided by the user.
+        max_words: Maximum number of words to include in the prompt.
+
+    Returns:
+        The prompt string sent to the model.
+    """
     prompt, _ = prepare_bias_input(raw_input, max_words=max_words)
     return prompt
 
 
 def _extract_json_payload(output: str) -> dict[str, Any] | None:
+    """Extract a JSON object from model output.
+
+    Args:
+        output: The raw model output string.
+
+    Returns:
+        The parsed JSON payload when possible, otherwise ``None``.
+    """
     if not output:
         return None
 
@@ -67,6 +104,14 @@ def _extract_json_payload(output: str) -> dict[str, Any] | None:
 
 
 def _write_run_log(log_path: str, prompt: str, output: str, parsed: dict[str, Any] | None) -> None:
+    """Write the prompt, raw output, and parsed JSON to disk.
+
+    Args:
+        log_path: Path to the log file to write.
+        prompt: The prompt sent to the model.
+        output: The raw output from the model.
+        parsed: Parsed JSON payload, if available.
+    """
     log_dir = os.path.dirname(log_path)
     if log_dir:
         os.makedirs(log_dir, exist_ok=True)
@@ -89,6 +134,16 @@ def analyze_with_mistral(
     max_words: int = DEFAULT_MAX_WORDS,
     prepared_prompt: str | None = None,
 ) -> dict:
+    """Run bias analysis using the local Mistral model via Ollama.
+
+    Args:
+        raw_input: The raw text, HTML, or URL provided by the user.
+        max_words: Maximum number of words to include in the prompt.
+        prepared_prompt: Optional pre-built prompt to reuse.
+
+    Returns:
+        The model response dictionary with bias classification details.
+    """
     prompt = prepared_prompt or prepare_bias_prompt(raw_input, max_words=max_words)
     log_path = os.getenv("BIAS_LOG_PATH", "mistral_run.log")
 

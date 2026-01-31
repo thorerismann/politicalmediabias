@@ -1,4 +1,4 @@
-# app/html_parser.py
+"""Utilities for extracting text from HTML or URL inputs."""
 
 import logging
 from urllib import parse, request
@@ -9,11 +9,28 @@ LOGGER = logging.getLogger(__name__)
 
 
 def _is_probable_url(text: str) -> bool:
+    """Check whether a string looks like an HTTP(S) URL.
+
+    Args:
+        text: Input string to evaluate.
+
+    Returns:
+        ``True`` if the string has an HTTP(S) scheme and netloc.
+    """
     parsed = parse.urlparse(text)
     return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
 
 
 def _fetch_url_content(url: str, timeout: int = 10) -> str:
+    """Fetch HTML content from a URL.
+
+    Args:
+        url: URL to request.
+        timeout: Timeout in seconds for the request.
+
+    Returns:
+        The decoded HTML response body.
+    """
     LOGGER.info("Fetching URL content for extraction: %s", url)
     req = request.Request(
         url,
@@ -24,6 +41,14 @@ def _fetch_url_content(url: str, timeout: int = 10) -> str:
 
 
 def extract_main_text(html_content: str) -> str:
+    """Extract visible text from an HTML document.
+
+    Args:
+        html_content: HTML markup to parse.
+
+    Returns:
+        The extracted text with whitespace normalized.
+    """
     soup = BeautifulSoup(html_content, "html.parser")
     if soup.body:
         LOGGER.debug("Extracted text from HTML body.")
@@ -33,6 +58,14 @@ def extract_main_text(html_content: str) -> str:
 
 
 def extract_text_from_input(raw_input: str) -> tuple[str, dict]:
+    """Normalize input into plain text and metadata.
+
+    Args:
+        raw_input: The raw text, HTML, or URL provided by the user.
+
+    Returns:
+        A tuple containing the extracted text and metadata describing the source.
+    """
     cleaned_input = raw_input.strip()
     metadata = {
         "source": "text",
