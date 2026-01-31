@@ -43,14 +43,47 @@ def prepare_bias_prompt(raw_input: str, max_words: int = DEFAULT_MAX_WORDS) -> s
     )
 
 
-def analyze_with_mistral(raw_input: str, max_words: int = 800) -> dict:
-    prompt = f"""
-Classify the political bias of the following text as 'left', 'right', or 'neutral'. 
-Only return a JSON object with a single field: "bias".
+def _extract_json_payload(output: str) -> dict[str, Any] | None:
+    if not output:
+        return None
 
-Text (max {max_words} words):
-{raw_input[:max_words * 6]}  # crude character-based trim
-"""
+    try:
+        return json.loads(output)
+    except json.JSONDecodeError:
+        pass
+
+    start = output.find("{")
+    end = output.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        return None
+
+    try:
+        return json.loads(output[start : end + 1])
+    except json.JSONDecodeError:
+        return None
+
+
+def _write_run_log(log_path: str, prompt: str, output: str, parsed: dict[str, Any] | None) -> None:
+    log_dir = os.path.dirname(log_path)
+    if log_dir:
+        os.makedirs(log_dir, exist_ok=True)
+
+    with open(log_path, "w", encoding="utf-8") as log_file:
+        log_file.write("=== Prompt ===\n")
+        log_file.write(prompt)
+        log_file.write("\n\n=== Raw Output ===\n")
+        log_file.write(output)
+        log_file.write("\n\n=== Parsed JSON ===\n")
+        if parsed is None:
+            log_file.write("None\n")
+        else:
+            log_file.write(json.dumps(parsed, indent=2))
+            log_file.write("\n")
+
+
+def analyze_with_mistral(raw_input: str, max_words: int = DEFAULT_MAX_WORDS) -> dict:
+    prompt = prepare_bias_prompt(raw_input, max_words=max_words)
+    log_path = os.getenv("BIAS_LOG_PATH", "mistral_run.log")
 
     try:
         result = subprocess.run(
@@ -61,15 +94,10 @@ Text (max {max_words} words):
             timeout=240
         )
         output = result.stdout.strip()
-
-        # Try parsing a JSON object from the output
-        import json
-        for line in output.splitlines():
-            try:
-                return json.loads(line)
-            except json.JSONDecodeError:
-                continue
-
+        parsed = _extract_json_payload(output)
+        _write_run_log(log_path, prompt, output, parsed)
+        if parsed is not None:
+            return parsed
         return {"bias": "unknown", "raw_output": output}
 
     except subprocess.TimeoutExpired:

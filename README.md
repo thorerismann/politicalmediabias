@@ -8,6 +8,7 @@ A local Streamlit app that analyzes political bias (left, right, or neutral) in 
 - Extracts main article text using Readability
 - Classifies political bias via LLM (Ollama)
 - Clean output + optional structured logic
+- Writes the latest prompt/output to `mistral_run.log` (override with `BIAS_LOG_PATH`)
 
 ## Setup
 

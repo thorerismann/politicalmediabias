@@ -1,3 +1,4 @@
+import os
 import textwrap
 
 import streamlit as st
@@ -38,6 +39,18 @@ with tab_entry:
                     st.error(f"Analysis failed: {exc}")
                 else:
                     render_bias_result(result)
+                    rationale = result.get("rationale")
+                    confidence = result.get("confidence")
+                    if rationale:
+                        st.markdown("**Model rationale**")
+                        st.write(rationale)
+                    if confidence is not None:
+                        st.markdown(f"**Confidence:** {confidence}")
+                    if "raw_output" in result:
+                        with st.expander("Raw model output"):
+                            st.code(result.get("raw_output", ""))
+                    log_path = os.getenv("BIAS_LOG_PATH", "mistral_run.log")
+                    st.caption(f"Latest run log written to `{log_path}`.")
 
 with tab_info:
     st.subheader("How it works")
