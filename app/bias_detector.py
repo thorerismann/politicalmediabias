@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 import json
 import logging
 import os
@@ -42,33 +43,36 @@ def prepare_bias_prompt(raw_input: str, max_words: int = DEFAULT_MAX_WORDS) -> s
     )
 
 
-def analyze_with_mistral(raw_input: str, max_words: int = DEFAULT_MAX_WORDS) -> dict[str, Any]:
-    api_key = os.getenv("MISTRAL_API_KEY")
-    if not api_key:
-        raise ValueError("Missing MISTRAL_API_KEY environment variable.")
+def analyze_with_mistral(raw_input: str, max_words: int = 800) -> dict:
+    prompt = f"""
+Classify the political bias of the following text as 'left', 'right', or 'neutral'. 
+Only return a JSON object with a single field: "bias".
 
-    prompt = prepare_bias_prompt(raw_input, max_words=max_words)
-    payload = {
-        "model": "mistral-small-latest",
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.2,
-    }
+Text (max {max_words} words):
+{raw_input[:max_words * 6]}  # crude character-based trim
+"""
 
-    LOGGER.info("Sending prompt to Mistral API.")
-    req = request.Request(
-        MISTRAL_API_URL,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
+    try:
+        result = subprocess.run(
+            ["ollama", "run", "mistral"],
+            input=prompt,
+            capture_output=True,
+            text=True,
+            timeout=240
+        )
+        output = result.stdout.strip()
 
-    with request.urlopen(req, timeout=30) as response:
-        response_body = response.read().decode("utf-8")
+        # Try parsing a JSON object from the output
+        import json
+        for line in output.splitlines():
+            try:
+                return json.loads(line)
+            except json.JSONDecodeError:
+                continue
 
-    response_payload = json.loads(response_body)
-    message = response_payload["choices"][0]["message"]["content"]
-    LOGGER.info("Received response from Mistral API.")
-    return json.loads(message)
+        return {"bias": "unknown", "raw_output": output}
+
+    except subprocess.TimeoutExpired:
+        return {"bias": "timeout"}
+    except Exception as e:
+        return {"bias": f"error: {e}"}
