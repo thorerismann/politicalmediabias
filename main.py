@@ -31,6 +31,7 @@ with tab_entry:
             with st.spinner("Analyzing bias with Mistral..."):
                 try:
                     result = analyze_with_mistral(user_input, max_words=max_words)
+                    st.write(result)
                 except ValueError as exc:
                     st.error(str(exc))
                 except Exception as exc:  # noqa: BLE001
