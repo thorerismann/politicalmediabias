@@ -15,25 +15,27 @@ st.markdown(
     "Paste a news article, statement, or HTML snippet below to estimate political bias."
 )
 
-tab_entry, tab_info = st.tabs(["Text / MTL Entry", "More Information"])
+max_words = st.slider("Maximum words sent to the model", 50, 400, 200, step=25)
 
-with tab_entry:
+tab_text, tab_link, tab_info = st.tabs(["Text Entry", "HTML Entry", "More Information"])
+
+with tab_text:
     st.subheader("Analyze text")
-    user_input = st.text_area(
-        "Text or HTML",
-        placeholder="Paste article text, a transcript, or HTML content here.",
+    user_input_text = st.text_area(
+        "Text",
+        placeholder="Paste text here.",
         height=220,
+        key='text_input'
     )
-    max_words = st.slider("Maximum words sent to the model", 50, 400, 200, step=25)
-    analyze_button = st.button("Analyze bias", type="primary", use_container_width=True)
+    analyze_text_button = st.button("Analyze bias", type="primary", use_container_width=True, key='analyze_text_button')
 
-    if analyze_button:
-        if not user_input.strip():
+    if analyze_text_button:
+        if not user_input_text.strip():
             st.warning("Please enter text or HTML before running the analysis.")
         else:
             with st.spinner("Analyzing bias with Mistral..."):
                 try:
-                    prompt, metadata = prepare_bias_input(user_input, max_words=max_words)
+                    prompt, metadata = prepare_bias_input(user_input_text, max_words=max_words)
                     if metadata.get("extracted"):
                         if metadata.get("source") == "url":
                             st.write("Extracted main article text from the provided URL.")
@@ -41,7 +43,7 @@ with tab_entry:
                             st.write("Extracted main article text from the provided HTML.")
                     st.write(f"Words cut to meet the limit: {metadata.get('words_cut', 0)}")
                     result = analyze_with_mistral(
-                        user_input,
+                        user_input_text,
                         max_words=max_words,
                         prepared_prompt=prompt,
                     )
@@ -64,6 +66,20 @@ with tab_entry:
                             st.code(result.get("raw_output", ""))
                     log_path = os.getenv("BIAS_LOG_PATH", "mistral_run.log")
                     st.caption(f"Latest run log written to `{log_path}`.")
+
+with tab_link:
+    st.subheader("Analyze text")
+    user_input_link = st.text_area(
+        "link",
+        placeholder="Paste HTML here.",
+        height=220,
+        key='link'
+    )
+    analyze_link_button = st.button("Analyze bias", type="primary", use_container_width=True, key='analize_link_bias')
+
+    if analyze_link_button:
+        st.write('link coming soon')
+
 
 with tab_info:
     st.subheader("How it works")
