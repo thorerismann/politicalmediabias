@@ -14,6 +14,7 @@ LOGGER = logging.getLogger(__name__)
 DEFAULT_MAX_WORDS = 200
 MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions"
 
+
 def truncate_words(text: str, max_words: int = DEFAULT_MAX_WORDS) -> str:
     """Truncate text to a maximum number of words.
 
@@ -26,6 +27,7 @@ def truncate_words(text: str, max_words: int = DEFAULT_MAX_WORDS) -> str:
     """
     words = text.split()
     return " ".join(words[:max_words])
+
 
 def _render_custom_prompt(prompt_template: str, truncated_text: str) -> str:
     """Render a custom prompt template.
@@ -75,9 +77,10 @@ def prepare_bias_input(
         prompt = _render_custom_prompt(prompt_template, truncated_text)
     else:
         prompt = (
-            "You are a media bias analyst. Classify the political bias of the text as "
-            "left, right, or neutral. Respond ONLY with a JSON object using keys "
-            '"bias", "confidence", and "rationale". The rationale should be 1-3 sentences.\n\n'
+            "You are a media bias analyst. Score the political bias of the text on a "
+            "scale from -1 (left) to 1 (right), with 0 as neutral. Respond ONLY with "
+            'a JSON object using keys "bias", "confidence", and "reasoning". The '
+            "reasoning should be 1-3 sentences.\n\n"
             f'Text:\n"""\n{truncated_text}\n"""'
         )
     return prompt, metadata
@@ -103,6 +106,54 @@ def prepare_bias_prompt(
         prompt_template=prompt_template,
     )
     return prompt
+
+
+def parse_bias_score(bias_value: Any) -> float | None:
+    """Parse a bias value into a numeric score between -1 and 1.
+
+    Args:
+        bias_value: Bias value returned by the model (string or numeric).
+
+    Returns:
+        The normalized bias score or ``None`` if parsing fails.
+    """
+    if bias_value is None:
+        return None
+    if isinstance(bias_value, (int, float)):
+        return max(-1.0, min(1.0, float(bias_value)))
+    if isinstance(bias_value, str):
+        normalized = bias_value.strip().lower()
+        if normalized in {"left", "liberal"}:
+            return -1.0
+        if normalized in {"right", "conservative"}:
+            return 1.0
+        if normalized in {"neutral", "center", "centre", "middle"}:
+            return 0.0
+        try:
+            numeric = float(normalized)
+        except ValueError:
+            return None
+        return max(-1.0, min(1.0, numeric))
+    return None
+
+
+def normalize_bias_response(result: dict[str, Any]) -> dict[str, Any]:
+    """Normalize a model response to ensure consistent bias fields.
+
+    Args:
+        result: Parsed model response from the analysis call.
+
+    Returns:
+        A dictionary with normalized ``bias`` and ``reasoning`` fields.
+    """
+    normalized = dict(result)
+    bias_score = parse_bias_score(normalized.get("bias"))
+    if bias_score is not None:
+        normalized["bias"] = bias_score
+    rationale = normalized.get("reasoning") or normalized.get("rationale")
+    if rationale is not None:
+        normalized["reasoning"] = rationale
+    return normalized
 
 
 def _extract_json_payload(output: str) -> dict[str, Any] | None:
