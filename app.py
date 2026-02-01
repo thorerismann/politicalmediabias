@@ -15,12 +15,21 @@ from app.bias_detector import (
 )
 from app.style_results import render_bias_result
 
-DEFAULT_PROMPT_TEMPLATE = (
-    "You are a media bias analyst. Score the political bias of the text on a "
-    "scale from -1 (left) to 1 (right), with 0 as neutral. Respond ONLY with a "
-    'JSON object using keys "bias", "confidence", and "reasoning". The reasoning '
-    "should be 1-3 sentences."
-    "\n\nText:\n\"\"\"\n{text}\n\"\"\""
+DEFAULT_PROMPT_TEMPLATE = ("""
+## Task
+You are a **media bias analyst**.
+
+## Instructions
+- Score the political bias of the text on a scale from **-1 (left)** to **1 (right)**.
+- Use **0** for neutral.
+- Respond **ONLY** with a valid JSON object.
+- The JSON **must** contain the following keys:
+  - `"bias"`
+  - `"confidence"`
+  - `"reasoning"`
+- `"reasoning"` should be **1–3 sentences**.
+
+## Text to analyze"""
 )
 
 

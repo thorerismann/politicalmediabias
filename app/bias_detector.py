@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import subprocess
+import streamlit as st
 from typing import Any
 
 from app.html_parser import extract_text_from_input
@@ -147,6 +148,7 @@ def normalize_bias_response(result: dict[str, Any]) -> dict[str, Any]:
         A dictionary with normalized ``bias`` and ``reasoning`` fields.
     """
     normalized = dict(result)
+    st.write(normalized)
     bias_score = parse_bias_score(normalized.get("bias"))
     if bias_score is not None:
         normalized["bias"] = bias_score

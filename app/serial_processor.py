@@ -78,7 +78,6 @@ def analyze_text_folder(
             "bias": normalized.get("bias"),
             "confidence": normalized.get("confidence"),
             "reasoning": normalized.get("reasoning"),
-            "reasoining": normalized.get("reasoning"),
             "raw_output": normalized.get("raw_output"),
         }
         st.write(output_payload)
