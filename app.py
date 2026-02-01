@@ -38,7 +38,7 @@ def render_app() -> None:
         max_words = st.slider("Maximum words sent to the model", 50, 400, 200, step=25)
         model_name = st.radio(
             "Model choice",
-            options=["mistral", "tinyllama"],
+            options=["mistral", "tinyllama", "deepseek-r1:1.5b"],
             index=0,
             horizontal=True,
         )
