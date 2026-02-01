@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
+import streamlit as st
 
 from app.bias_detector import (
     analyze_with_model,
@@ -57,7 +58,8 @@ def analyze_text_folder(
     results_dir = target_dir / "results"
     processed = 0
 
-    for text_file in text_files:
+    for index, text_file in enumerate(text_files, start=1):
+        st.write(f'processing file {index} of {len(text_files)}: {text_file.name}')
         raw_text = text_file.read_text(encoding="utf-8")
         prompt, _ = prepare_bias_input(
             raw_text,
@@ -79,6 +81,7 @@ def analyze_text_folder(
             "reasoining": normalized.get("reasoning"),
             "raw_output": normalized.get("raw_output"),
         }
+        st.write(output_payload)
         output_path = results_dir / f"{text_file.stem}.json"
         _write_result_json(output_path, output_payload)
         processed += 1
