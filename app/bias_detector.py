@@ -242,7 +242,9 @@ def analyze_with_model(
         parsed = _extract_json_payload(output)
         _write_run_log(log_path, prompt, output, parsed)
         if parsed is not None:
-            return parsed
+            parsed_with_raw = dict(parsed)
+            parsed_with_raw.setdefault("raw_output", output)
+            return parsed_with_raw
         return {"bias": "unknown", "raw_output": output}
 
     except subprocess.TimeoutExpired:
