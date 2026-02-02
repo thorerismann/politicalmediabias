@@ -217,7 +217,7 @@ def analyze_with_model(
     model_name: str,
     max_words: int = DEFAULT_MAX_WORDS,
     prepared_prompt: str | None = None,
-) -> dict:
+) -> dict[str, Any]:
     """Run bias analysis using a local Ollama model.
 
     Args:
