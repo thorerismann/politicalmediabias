@@ -80,7 +80,6 @@ def analyze_text_folder(
             "reasoning": normalized.get("reasoning"),
             "raw_output": normalized.get("raw_output"),
         }
-        st.write(output_payload)
         output_path = results_dir / f"{text_file.stem}.json"
         _write_result_json(output_path, output_payload)
         processed += 1
