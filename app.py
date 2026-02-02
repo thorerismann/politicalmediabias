@@ -15,7 +15,7 @@ from app.bias_detector import (
 )
 from app.style_results import render_bias_result
 
-DEFAULT_PROMPT_TEMPLATE = ("""
+DEFAULT_PROMPT_TEMPLATE: str = ("""
 ## Task
 You are a **media bias analyst**.
 

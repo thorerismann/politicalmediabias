@@ -24,6 +24,8 @@ mamba activate polibias
 ollama pull mistral
 ollama pull tinyllama
 ollama pull deepseek-r1:1.5b
+ollama pull qwen2.5:3b
+ollama pull phi3.5
 
 # Run tests
 pytest tests/
@@ -39,6 +41,10 @@ The UI lets you select one of the following Ollama model names:
 - `mistral`
 - `tinyllama`
 - `deepseek-r1:1.5b`
+- `qwen2.5:3b`
+- `phi3.5`
+
+Recent additions include `qwen2.5:3b` and `phi3.5` for improved structured responses.
 
 You can add additional Ollama models by updating the model list in `app.py` and pulling them with `ollama pull <model>`.
 
@@ -46,3 +52,11 @@ You can add additional Ollama models by updating the model list in `app.py` and 
 
 - The app uses BeautifulSoup (`beautifulsoup4`) for HTML extraction; no external readability service is required.
 - Requirements are listed in `requirements.txt` and include Streamlit, BeautifulSoup, and pytest.
+- The TinyLlama and DeepSeek R1 (1.5B) models often struggle to return consistently structured JSON output compared to Mistral, Qwen 2.5, or Phi 3.5.
+
+## Future plans
+
+- Add a headline bias tracker to compare headline framing against full-article analysis.
+- Explore additional models comparable to Mistral for higher-quality structured JSON output.
+- Add a lede bias tracker to analyze opening paragraphs separately from the body.
+- Add subject-matter bias tracking (e.g., foreign policy vs. economic coverage).
