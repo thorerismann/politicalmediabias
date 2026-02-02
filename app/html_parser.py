@@ -6,6 +6,7 @@ from urllib import parse, request
 from bs4 import BeautifulSoup
 
 LOGGER = logging.getLogger(__name__)
+MIN_RTS_BODY_WORDS = 30
 
 
 def _is_probable_url(text: str) -> bool:
@@ -96,3 +97,85 @@ def extract_text_from_input(raw_input: str) -> tuple[str, dict]:
 
     LOGGER.info("Detected plain text input; trimming whitespace.")
     return cleaned_input, metadata
+
+
+def _extract_rts_text(element: BeautifulSoup | None) -> str | None:
+    """Extract and normalize text from a BeautifulSoup element."""
+    if not element:
+        return None
+    text = element.get_text(separator=" ", strip=True)
+    return text or None
+
+
+def extract_rts_article(html_content: str) -> dict:
+    """Extract RTS article fields from HTML content.
+
+    Args:
+        html_content: HTML markup to parse.
+
+    Returns:
+        A dictionary with keys: title, body, source, credits, date.
+    """
+    soup = BeautifulSoup(html_content, "html.parser")
+    body_text = _extract_rts_text(soup.select_one(".article-part.article-body"))
+    if not body_text or len(body_text.split()) < MIN_RTS_BODY_WORDS:
+        LOGGER.warning("RTS article body missing or too short.")
+        return {
+            "title": None,
+            "body": None,
+            "source": None,
+            "credits": None,
+            "date": None,
+        }
+
+    title_text = _extract_rts_text(
+        soup.select_one("h1.article-part.article-title")
+    )
+    source_text = _extract_rts_text(soup.select_one(".sources"))
+    credits_text = _extract_rts_text(soup.select_one(".credit"))
+    date_meta = soup.find("meta", attrs={"name": "dcterms.created"})
+    date_value = date_meta.get("content") if date_meta else None
+
+    return {
+        "title": title_text,
+        "body": body_text,
+        "source": source_text,
+        "credits": credits_text,
+        "date": date_value,
+    }
+
+
+def extract_rts_article_from_input(raw_input: str) -> dict:
+    """Extract RTS article fields from a URL or HTML string.
+
+    Args:
+        raw_input: A URL or raw HTML string.
+
+    Returns:
+        A dictionary with keys: title, body, source, credits, date.
+    """
+    cleaned_input = raw_input.strip()
+    if not cleaned_input:
+        return {
+            "title": None,
+            "body": None,
+            "source": None,
+            "credits": None,
+            "date": None,
+        }
+
+    if _is_probable_url(cleaned_input):
+        html_content = _fetch_url_content(cleaned_input)
+        return extract_rts_article(html_content)
+
+    if "<" in cleaned_input and ">" in cleaned_input:
+        return extract_rts_article(cleaned_input)
+
+    LOGGER.warning("RTS article extraction requires HTML or URL input.")
+    return {
+        "title": None,
+        "body": None,
+        "source": None,
+        "credits": None,
+        "date": None,
+    }

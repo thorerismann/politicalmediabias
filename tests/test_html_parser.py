@@ -4,7 +4,11 @@ from typing import Any
 
 from _pytest.monkeypatch import MonkeyPatch
 
-from app.html_parser import extract_main_text, extract_text_from_input
+from app.html_parser import (
+    extract_main_text,
+    extract_rts_article,
+    extract_text_from_input,
+)
 
 
 def test_extract_main_text_from_html() -> None:
@@ -46,3 +50,42 @@ def test_extract_text_from_url(monkeypatch: MonkeyPatch) -> None:
     text, metadata = extract_text_from_input("https://example.com/article")
     assert "Article text." in text
     assert metadata["source"] == "url"
+
+
+def test_extract_rts_article_success() -> None:
+    """Ensure RTS article extraction returns structured fields."""
+    body_words = " ".join([f"word{i}" for i in range(35)])
+    html = f"""
+    <html>
+        <head>
+            <meta name="dcterms.created" content="2025-08-27T19:38:35Z" />
+        </head>
+        <body>
+            <h1 class="article-part article-title">RTS Title</h1>
+            <div class="article-part article-body">{body_words}</div>
+            <div class="sources">RTS Source</div>
+            <div class="credit">RTS Credit</div>
+        </body>
+    </html>
+    """
+    result = extract_rts_article(html)
+    assert result["body"] == body_words
+    assert result["title"] == "RTS Title"
+    assert result["source"] == "RTS Source"
+    assert result["credits"] == "RTS Credit"
+    assert result["date"] == "2025-08-27T19:38:35Z"
+
+
+def test_extract_rts_article_body_too_short() -> None:
+    """Ensure RTS article extraction fails gracefully on short bodies."""
+    html = """
+    <html>
+        <body>
+            <h1 class="article-part article-title">RTS Title</h1>
+            <div class="article-part article-body">Too short body text.</div>
+        </body>
+    </html>
+    """
+    result = extract_rts_article(html)
+    assert result["body"] is None
+    assert result["title"] is None
