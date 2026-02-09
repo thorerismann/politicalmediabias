@@ -107,7 +107,7 @@ def _extract_rts_text(element: BeautifulSoup | None) -> str | None:
     return text or None
 
 
-def extract_rts_article(html_content: str) -> dict:
+def extract_rts_article(html_content: str) -> dict[str, str | None]:
     """Extract RTS article fields from HTML content.
 
     Args:
@@ -145,7 +145,7 @@ def extract_rts_article(html_content: str) -> dict:
     }
 
 
-def extract_rts_article_from_input(raw_input: str) -> dict:
+def extract_rts_article_from_input(raw_input: str) -> dict[str, str | None]:
     """Extract RTS article fields from a URL or HTML string.
 
     Args:

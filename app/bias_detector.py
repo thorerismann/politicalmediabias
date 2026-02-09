@@ -6,7 +6,6 @@ import json
 import logging
 import os
 import subprocess
-import streamlit as st
 from typing import Any
 
 from app.html_parser import extract_text_from_input
@@ -148,7 +147,6 @@ def normalize_bias_response(result: dict[str, Any]) -> dict[str, Any]:
         A dictionary with normalized ``bias`` and ``reasoning`` fields.
     """
     normalized = dict(result)
-    st.write(normalized)
     bias_score = parse_bias_score(normalized.get("bias"))
     if bias_score is not None:
         normalized["bias"] = bias_score
@@ -259,7 +257,7 @@ def analyze_with_mistral(
     raw_input: str,
     max_words: int = DEFAULT_MAX_WORDS,
     prepared_prompt: str | None = None,
-) -> dict:
+) -> dict[str, Any]:
     """Run bias analysis using the local Mistral model via Ollama."""
     return analyze_with_model(
         raw_input,
@@ -273,7 +271,7 @@ def analyze_with_tinyllama(
     raw_input: str,
     max_words: int = DEFAULT_MAX_WORDS,
     prepared_prompt: str | None = None,
-) -> dict:
+) -> dict[str, Any]:
     """Run bias analysis using the TinyLlama model via Ollama."""
     return analyze_with_model(
         raw_input,
